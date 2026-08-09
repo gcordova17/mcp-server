@@ -1,0 +1,24 @@
+services:
+  mcp-server:
+    build: .
+    container_name: mcp-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    healthcheck:
+      # /mcp requires POST + specific headers, so we hit it with a lightweight
+      # GET just to confirm the port is accepting connections.
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8000), timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - mcp-net
+
+networks:
+  mcp-net:
+    driver: bridge
