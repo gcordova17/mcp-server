@@ -18,6 +18,8 @@ services:
       start_period: 5s
     networks:
       - mcp-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   mcp-net:
