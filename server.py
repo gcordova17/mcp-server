@@ -317,6 +317,28 @@ async def get_promotion_history(workflow_id: str) -> dict:
     return await _api("GET", f"{WF}/workflows/{workflow_id}/promotions")
 
 
+@mcp.tool(annotations=READ)
+async def get_lineage(workflow_id: Optional[str] = None, version: Optional[int] = None,
+                      execution_id: Optional[str] = None, run_id: Optional[str] = None) -> dict:
+    """Where something came from: version ancestry (what each fork changed), sandbox runs, the data cut
+    (tickers, train boundaries, test windows), forecaster checkpoints checked against the fingerprints WPPO
+    recorded, promotion records (who, human or agent) and the serving pointer. Pass workflow_id (+ version,
+    else the active one), an execution_id, a WPPO run_id, or nothing for what production serves now."""
+    g = await _api("GET", f"{WF}/lineage", params={"workflow_id": workflow_id, "version": version,
+                                                    "execution_id": execution_id, "run_id": run_id})
+    return {**{k: g.get(k) for k in ("focus", "workflow_id", "version", "serving_run_id", "notes")},
+            "nodes": [{**{k: n.get(k) for k in ("id", "kind", "title", "subtitle", "state", "badges", "at")},
+                       "detail": {d["k"]: d["v"] for d in n.get("detail") or []}} for n in g.get("nodes", [])],
+            "edges": [[e["from"], e["to"], e.get("label")] for e in g.get("edges", [])]}
+
+
+@mcp.tool(annotations=READ)
+async def diff_versions(workflow_id: str, a: int, b: int) -> dict:
+    """Parameter-level changes from version a to version b (effective values: an omitted param counts as
+    its capability default), plus added/removed nodes, connections and settings changes."""
+    return await _api("GET", f"{WF}/workflows/{workflow_id}/diff", params={"a": a, "b": b})
+
+
 def register_capability_tools(caps: list):
     """One configure_<capability> tool per registered capability, so each node type's parameter schema is
     in front of the model as part of the tool's description."""
