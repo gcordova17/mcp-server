@@ -1,8 +1,8 @@
 # tickernn-mcp: the AI agent gateway
 
 An MCP server (official Python SDK, `mcp==2.0.0`, Streamable HTTP on
-`:8000/mcp`) that lets AI agents work with the TickerNN model pipeline
-(HMM / MISA -> WMM / QWMM -> WPPO) through tickerNN's Workflow Studio
+`:8000/mcp`) that lets AI agents work with the TickerNN model pipelines
+(HMM / MISA -> WMM / QWMM -> WPPO, and each user's allocator: ticker signals -> panel -> allocator) through tickerNN's Workflow Studio
 framework (`bef/` in the tickerNN repo), under the same governance as people.
 
 ## What an agent can and can't do
