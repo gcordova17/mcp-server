@@ -5,9 +5,15 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    # TICKERNN_AGENT_KEY (tickerNN's AGENT_API_KEY) and TICKERNN_API_URL.
+    env_file: .env
     environment:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
+      - MCP_AGENT_TOKENS=/app/secrets/agents.json
+    # Agent bearer tokens (SHA-256 only), managed with `server.py token ...`.
+    volumes:
+      - ./secrets:/app/secrets
     healthcheck:
       # /mcp requires POST + specific headers, so we hit it with a lightweight
       # GET just to confirm the port is accepting connections.
