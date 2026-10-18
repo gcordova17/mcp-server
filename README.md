@@ -10,6 +10,7 @@ framework (`bef/` in the tickerNN repo), under the same governance as people.
 | Can | Can't |
 |---|---|
 | Read capabilities, workflows, versions, policy, gates, history, lineage (`get_lineage`) and version diffs (`diff_versions`) | Approve, promote, reject or roll back |
+| Search the knowledge base and read the generated wiki (`search_knowledge`, `read_knowledge_source`, `list_wiki_pages`, `get_wiki_page`) | Reindex it (it can spend Claude tokens) |
 | Fork a version into a draft with changes (`fork_draft`, `configure_<capability>`) | Act as any user but the one its token names |
 | Run a draft in the sandbox, follow it, read logs, cancel it, compare it with production | Write anything production serves |
 | Request promotion (`request_promotion`: SANDBOX -> VALIDATED when the required gates pass) | Promote per-ticker / WMM / QWMM models |

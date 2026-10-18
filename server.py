@@ -339,6 +339,37 @@ async def diff_versions(workflow_id: str, a: int, b: int) -> dict:
     return await _api("GET", f"{WF}/workflows/{workflow_id}/diff", params={"a": a, "b": b})
 
 
+KB = "/api/v1/knowledge"
+
+
+@mcp.tool(annotations=READ)
+async def search_knowledge(query: str, k: int = 6, repo: Optional[str] = None, kind: Optional[str] = None) -> dict:
+    """Hybrid (semantic + keyword) search of TickerNN's knowledge base: the READMEs, CLAUDE.md, grooming backlogs,
+    plans, FRDs (historical), Python docstrings, capability/policy YAML, SQL migrations and the generated wiki.
+    Hits cite `doc_id:Lx-Ly`. repo: tickerNN, apache-docker, mcp-server or wiki; kind: readme, guide, backlog,
+    plan, frd, doc, docstring, capability, policy, migration, notebook, wiki (comma list)."""
+    return await _api("GET", f"{KB}/search", params={"q": query, "k": k, "repo": repo, "kind": kind})
+
+
+@mcp.tool(annotations=READ)
+async def read_knowledge_source(doc_id: str, start_line: Optional[int] = None, end_line: Optional[int] = None) -> dict:
+    """Read an indexed document (doc_id from a search hit), optionally a line range. Only indexed text."""
+    return await _api("GET", f"{KB}/documents/{doc_id}", params={"start": start_line, "end": end_line})
+
+
+@mcp.tool(annotations=READ)
+async def list_wiki_pages() -> dict:
+    """The generated wiki's pages (overview, one per subsystem, known issues, glossary) and whether each is
+    generated or stale."""
+    return await _api("GET", f"{KB}/wiki")
+
+
+@mcp.tool(annotations=READ)
+async def get_wiki_page(slug: str) -> dict:
+    """One generated wiki page as markdown; its citations are doc_id:Lx-Ly."""
+    return await _api("GET", f"{KB}/wiki/{slug}")
+
+
 def register_capability_tools(caps: list):
     """One configure_<capability> tool per registered capability, so each node type's parameter schema is
     in front of the model as part of the tool's description."""
