@@ -15,6 +15,7 @@ framework (`bef/` in the tickerNN repo), under the same governance as people.
 | Run a draft in the sandbox, follow it, read logs, cancel it, compare it with production | Write anything production serves |
 | Request promotion (`request_promotion`: SANDBOX -> VALIDATED when the required gates pass) | Promote per-ticker / WMM / QWMM models |
 | Ask production WPPO for a decision (`wppo_decide`) | |
+| Read Risk Intelligence for any asset, the user's watchlist and alerts, and service health (`risk_analyze`, `risk_options`, `risk_watchlist`, `risk_alerts`, `risk_status`) | Change the watchlist or acknowledge alerts |
 
 The right-hand column is enforced by tickerNN, not by which tools exist
 here: this server calls tickerNN with its own `AGENT_API_KEY`, and
@@ -60,6 +61,9 @@ claude mcp add --transport http tickernn http://<host>:8000/mcp \
   `get_execution_log`, `cancel_execution`, `compare_execution`.
 - **Promotion:** `get_gates`, `request_promotion`, `get_promotion_history`.
 - **Production (read-only):** `wppo_decide`, `wppo_runs`.
+- **Risk Intelligence (read-only):** `risk_options`, `risk_analyze` (the
+  dashboard's analysis without its drill-down series unless
+  `include_series`), `risk_watchlist`, `risk_alerts`, `risk_status`.
 - **Per-ticker PPO (pre-workflow):** `get_health`, `get_available_tickers`,
   `get_training_logs`, `train_model`, `get_*_chart`,
   `launch_optimizer_job`, `list_optimizer_jobs`, `get_optimizer_job`.

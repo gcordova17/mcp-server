@@ -106,7 +106,9 @@ mcp = MCPServer(
         "fork_draft or configure_<capability> to change a copy -> run_sandbox -> get_execution until COMPLETED "
         "-> compare_execution / get_gates -> request_promotion if the required gates pass. You act as the user "
         "your token names. You cannot approve, promote, reject or roll back: a person does that in Workflow "
-        "Studio. Sandbox runs train on the GPU and can take an hour at production settings; one runs at a time."),
+        "Studio. Sandbox runs train on the GPU and can take an hour at production settings; one runs at a time. "
+        "Risk Intelligence (risk_options, risk_analyze, risk_watchlist, risk_alerts, risk_status) is read-only: "
+        "explainable, forward-looking risk per asset, decision support rather than trade instructions."),
     token_verifier=AgentTokenVerifier(),
     auth=AuthSettings(issuer_url=PUBLIC_URL, resource_server_url=None),
 )
@@ -407,6 +409,65 @@ async def wppo_decide(ticker: str, position: str = "flat", bars_since_trade: Opt
 async def wppo_runs() -> dict:
     """Every WPPO training run with its verdict, and which one production serves."""
     return await _api("GET", "/api/v1/wppo/runs")
+
+
+# ------------------------------------------------- risk intelligence (read-only)
+
+RI = "/api/v1/risk-intelligence"
+
+
+def _compact_analysis(r: dict, keep_series: bool) -> dict:
+    """The /analyze response without the drill-down series and the scenarios' day-by-day shock paths
+    (thousands of numbers) unless asked for."""
+    if not keep_series:
+        r = {k: v for k, v in r.items() if k != "series"}
+        for group in ("standard", "custom", "crisis_replays"):         # day-by-day shock paths
+            for x in (r.get("scenario_sensitivity") or {}).get(group) or []:
+                (x.get("shocks") or {}).pop("return_path", None)
+    return r
+
+
+@mcp.tool(annotations=READ)
+async def risk_options() -> dict:
+    """Risk Intelligence: the analyzable assets by category (equity, fixed income, FX, commodities, energy,
+    crypto), the volatility models, horizons (trading days) and periods, and which risk methodology version is
+    served (validated, or the built-in uncalibrated defaults)."""
+    return await _api("GET", f"{RI}/options")
+
+
+@mcp.tool(annotations=READ)
+async def risk_analyze(asset: str, horizon: int = 20, model: Optional[str] = None, period: str = "1Y",
+                       include: Optional[list[str]] = None, include_series: bool = False) -> dict:
+    """Forward-looking, explainable risk for one asset (the Risk Intelligence dashboard's analysis): top risk
+    drivers and composite score, cross-market stress, regime fragility and transition probabilities, risk
+    momentum, liquidity, volatility surprise, hedging efficiency, factor dominance, horizon map, decision posture
+    (with its rule and change triggers), scenario sensitivity, risk controls and signal confidence. Every number
+    carries unit, horizon, method and quality; unavailable ones say why. model: Ensemble (default), GARCH,
+    GARCH-t, EGARCH or GJR-GARCH. include: a subset of sections. A new asset takes ~5-9 s; repeats are cached.
+    Decision support, not trade instructions."""
+    r = await _api("POST", f"{RI}/analyze", body={"asset": asset, "horizon": horizon, "model": model,
+                                                   "period": period, "include": include}, timeout=180)
+    return _compact_analysis(r, include_series)
+
+
+@mcp.tool(annotations=READ)
+async def risk_watchlist() -> dict:
+    """The user's risk watchlist: watched assets with their alert rules and the last evaluated snapshot
+    (posture, composite, probabilities), plus the count of unacknowledged alerts."""
+    return await _api("GET", f"{RI}/watchlist")
+
+
+@mcp.tool(annotations=READ)
+async def risk_alerts(unacknowledged_only: bool = True, limit: int = 50) -> dict:
+    """Alerts fired by the user's watchlist rules (posture changes, thresholds crossed), newest first."""
+    return await _api("GET", f"{RI}/alerts", params={"unacknowledged": unacknowledged_only, "limit": limit})
+
+
+@mcp.tool(annotations=READ)
+async def risk_status() -> dict:
+    """Risk Intelligence service health: latency percentiles, cache hit rate, errors, the alert evaluator, and
+    the served methodology with its backtest's model metrics."""
+    return await _api("GET", f"{RI}/status")
 
 
 # ------------------------------------------- per-ticker PPO (pre-workflow)
