@@ -11,6 +11,7 @@ framework (`bef/` in the tickerNN repo), under the same governance as people.
 |---|---|
 | Read capabilities, workflows, versions, policy, gates, history, lineage (`get_lineage`) and version diffs (`diff_versions`) | Approve, promote, reject or roll back |
 | Search the knowledge base and read the generated wiki (`search_knowledge`, `read_knowledge_source`, `list_wiki_pages`, `get_wiki_page`) | Reindex it (it can spend Claude tokens) |
+| Read the semantic layer and get reuse-first build options (`semantic_find`, `semantic_describe`, `semantic_brief`, `semantic_impact`, `semantic_freshness`, `plan_workflow`) | Write capability code |
 | Fork a version into a draft with changes (`fork_draft`, `configure_<capability>`) | Act as any user but the one its token names |
 | Run a draft in the sandbox, follow it, read logs, cancel it, compare it with production | Write anything production serves |
 | Request promotion (`request_promotion`: SANDBOX -> VALIDATED when the required gates pass) | Promote per-ticker / WMM / QWMM models |
@@ -57,6 +58,9 @@ claude mcp add --transport http tickernn http://<host>:8000/mcp \
   `configure_misa` / `configure_wmm` / `configure_qwmm` / `configure_wppo`
   (generated at startup from tickerNN's capability registry; each carries
   its node's parameter schema in its description).
+- **Semantic layer (read-only):** `semantic_brief`, `semantic_find`,
+  `semantic_describe`, `semantic_impact`, `semantic_freshness`, `plan_workflow` (options: reuse, extend, fork,
+  compose, code; save the one chosen with `create_draft`).
 - **Sandbox:** `run_sandbox`, `list_executions`, `get_execution`,
   `get_execution_log`, `cancel_execution`, `compare_execution`.
 - **Promotion:** `get_gates`, `request_promotion`, `get_promotion_history`.

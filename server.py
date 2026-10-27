@@ -341,6 +341,58 @@ async def diff_versions(workflow_id: str, a: int, b: int) -> dict:
     return await _api("GET", f"{WF}/workflows/{workflow_id}/diff", params={"a": a, "b": b})
 
 
+SEM = "/api/v1/semantic"
+
+
+@mcp.tool(annotations=READ)
+async def semantic_find(query: str, types: Optional[str] = None, k: int = 8) -> dict:
+    """Search TickerNN's semantic layer -- a typed map of the system derived from its sources: workflow kinds,
+    capabilities (node types), contracts, workflows, versions with their last run, serving pointers, gate sets and
+    blueprints -- for what a request is about. types: comma list of kind, stage, capability, contract, workflow,
+    version, blueprint, serving, gates."""
+    return await _api("GET", f"{SEM}/find", params={"q": query, "types": types, "k": k})
+
+
+@mcp.tool(annotations=READ)
+async def semantic_describe(entity_id: str) -> dict:
+    """One semantic-layer entity (e.g. capability:sensitivity, workflow:wppo-portfolio, kind:forecast) with its
+    facts and relations: what it consumes, produces, uses, serves or governs, and what points at it."""
+    return await _api("GET", f"{SEM}/describe/{entity_id}")
+
+
+@mcp.tool(annotations=READ)
+async def semantic_brief() -> dict:
+    """The system description generated from the semantic layer: every workflow kind with its decision node and
+    required gates, every capability with its contracts, the workflows and what production serves. Read it first."""
+    return await _api("GET", f"{SEM}/brief")
+
+
+@mcp.tool(annotations=READ)
+async def semantic_impact(entity_id: str) -> dict:
+    """What depends on an entity, transitively: for a data series (series:price:btc-usd, series:context:CPI), a
+    capability or a contract, the versions, workflows and production serving pointers it reaches, and readers of
+    its whole dataset that may include it."""
+    return await _api("GET", f"{SEM}/impact/{entity_id}")
+
+
+@mcp.tool(annotations=READ)
+async def semantic_freshness() -> dict:
+    """Data series that aren't fresh (lagging, stale, delisted, missing), with their last stored date."""
+    return await _api("GET", f"{SEM}/freshness")
+
+
+@mcp.tool(annotations=READ)
+async def plan_workflow(spec: dict) -> dict:
+    """Reuse-first options for building what is asked, each validated and costed, cheapest first: reuse (a
+    completed run already has it), extend (add an existing capability to a workflow, ports wired), fork (a
+    workflow with changed params), compose (a new workflow from its kind's blueprint), code (nothing expresses it;
+    a person writes it). spec: {intent, goal: forecast|risk|portfolio|pipeline|benchmark|allocator, kind?,
+    workflow_id?, add? (capability id), params? (the decision node's), node_params? ({node or capability id:
+    params}, nested dicts merge), settings?, model? (a learner name)}. Saves nothing: save the chosen option's
+    definition with create_draft."""
+    return await _api("POST", f"{SEM}/plan", body={"spec": spec})
+
+
 KB = "/api/v1/knowledge"
 
 
