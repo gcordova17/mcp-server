@@ -382,6 +382,22 @@ async def semantic_freshness() -> dict:
 
 
 @mcp.tool(annotations=READ)
+async def check_action(action: str, params: dict) -> dict:
+    """Whether an action would be allowed for your user, and why not, before calling it: the gateway (agents
+    never change production), the entitlement it needs (workflow.run to run or cancel sandboxes) and its
+    preconditions against live state. action: an action entity id from semantic_find(types="action"), e.g.
+    "action:POST /api/v1/workflow/workflows/{workflow_id}/versions/{version}/run"; params: its path parameters."""
+    return await _api("POST", f"{SEM}/check", body={"action": action, "params": params})
+
+
+@mcp.tool(annotations=WRITE)
+async def act(action: str, params: dict, body: Optional[dict] = None) -> dict:
+    """Check an action (as check_action), then call its route as your user. Refused, with the report, when
+    anything blocks it; the route applies its own rules too. Production changes are always refused for agents."""
+    return await _api("POST", f"{SEM}/act", body={"action": action, "params": params, "body": body})
+
+
+@mcp.tool(annotations=READ)
 async def plan_workflow(spec: dict) -> dict:
     """Reuse-first options for building what is asked, each validated and costed, cheapest first: reuse (a
     completed run already has it), extend (add an existing capability to a workflow, ports wired), fork (a
