@@ -11,7 +11,7 @@ framework (`bef/` in the tickerNN repo), under the same governance as people.
 |---|---|
 | Read capabilities, workflows, versions, policy, gates, history, lineage (`get_lineage`) and version diffs (`diff_versions`) | Approve, promote, reject or roll back |
 | Search the knowledge base and read the generated wiki (`search_knowledge`, `read_knowledge_source`, `list_wiki_pages`, `get_wiki_page`) | Reindex it (it can spend Claude tokens) |
-| Read the semantic layer and get reuse-first build options (`semantic_find`, `semantic_describe`, `semantic_brief`, `semantic_impact`, `semantic_freshness`, `plan_workflow`); check an action before calling it and act through the semantic layer (`check_action`, `act`) | Write capability code; run sandboxes without the user's `workflow.run` entitlement |
+| Read the semantic layer and get reuse-first build options (`semantic_find`, `semantic_describe`, `semantic_brief`, `semantic_impact`, `semantic_freshness`, `plan_workflow`); check an action before calling it and act through the semantic layer (`check_action`, `act`) | Write capability logic (it can scaffold one on a branch, `scaffold_capability`, with the user's `workflow.build` entitlement); run sandboxes without the user's `workflow.run` entitlement |
 | Fork a version into a draft with changes (`fork_draft`, `configure_<capability>`) | Act as any user but the one its token names |
 | Run a draft in the sandbox, follow it, read logs, cancel it, compare it with production | Write anything production serves |
 | Request promotion (`request_promotion`: SANDBOX -> VALIDATED when the required gates pass) | Promote per-ticker / WMM / QWMM models |
@@ -63,7 +63,8 @@ claude mcp add --transport http tickernn http://<host>:8000/mcp \
   options: reuse, extend, fork, compose, code; save the one chosen with
   `create_draft`), `check_action` and `act` (any API write as an action
   entity: the gateway, the user's entitlement and the preconditions are
-  checked before the route is called).
+  checked before the route is called), `scaffold_capability` and
+  `list_scaffolds` (a new node type as a branch for a person to finish).
 - **Sandbox:** `run_sandbox`, `list_executions`, `get_execution`,
   `get_execution_log`, `cancel_execution`, `compare_execution`.
 - **Promotion:** `get_gates`, `request_promotion`, `get_promotion_history`.

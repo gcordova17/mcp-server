@@ -397,6 +397,23 @@ async def act(action: str, params: dict, body: Optional[dict] = None) -> dict:
     return await _api("POST", f"{SEM}/act", body={"action": action, "params": params, "body": body})
 
 
+@mcp.tool(annotations=WRITE)
+async def scaffold_capability(spec: dict, dry_run: bool = True) -> dict:
+    """A new capability (node type) as a branch capability/<id>: YAML, stage script, plugin and test as skeletons
+    for a person to complete, review and merge -- nothing runs before that. spec: {id, template (evaluation: after
+    a WPPO-Portfolio rebalancer | family: a new research workflow kind), title, description, output_contract,
+    output_about (for a new contract), tags, examples, params ({name: {type, default, ...}})}. dry_run (default)
+    returns the files; false creates the branch -- only after your user confirms. Needs their "Create
+    capabilities" entitlement. Start from plan_workflow's code option, which carries a prefilled spec."""
+    return await _api("POST", f"{WF}/scaffolds", body={"spec": spec, "dry_run": dry_run})
+
+
+@mcp.tool(annotations=READ)
+async def list_scaffolds() -> dict:
+    """Capability scaffold branches waiting for a person to complete and merge, newest first."""
+    return await _api("GET", f"{WF}/scaffolds")
+
+
 @mcp.tool(annotations=READ)
 async def plan_workflow(spec: dict) -> dict:
     """Reuse-first options for building what is asked, each validated and costed, cheapest first: reuse (a
