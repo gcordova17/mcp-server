@@ -346,10 +346,12 @@ SEM = "/api/v1/semantic"
 
 @mcp.tool(annotations=READ)
 async def semantic_find(query: str, types: Optional[str] = None, k: int = 8) -> dict:
-    """Search TickerNN's semantic layer -- a typed map of the system derived from its sources: workflow kinds,
-    capabilities (node types), contracts, workflows, versions with their last run, serving pointers, gate sets and
-    blueprints -- for what a request is about. types: comma list of kind, stage, capability, contract, workflow,
-    version, blueprint, serving, gates."""
+    """Search TickerNN's semantic layer -- a typed map of the system derived from its sources: the site's pages and
+    the views on them, API reads, assistant tools and sections, workflow kinds, capabilities (node types), contracts,
+    workflows, versions with their last run, serving pointers, gate sets, blueprints and data -- for what a request
+    is about. Results are cut to the signed-in user's entitlements. types: comma list of page, view, query, tool,
+    section, kind, stage, capability, contract, workflow, version, blueprint, serving, gates, concept, action,
+    dataset, series, pit_rule."""
     return await _api("GET", f"{SEM}/find", params={"q": query, "types": types, "k": k})
 
 
@@ -373,6 +375,15 @@ async def semantic_impact(entity_id: str) -> dict:
     capability or a contract, the versions, workflows and production serving pointers it reaches, and readers of
     its whole dataset that may include it."""
     return await _api("GET", f"{SEM}/impact/{entity_id}")
+
+
+@mcp.tool(annotations=READ)
+async def semantic_sources(entity_id: str) -> dict:
+    """Where an entity comes from: everything it depends on, transitively (semantic_impact read the other way). For
+    a page's view (view:risk.stop_loss, view:portfolio.tracker; semantic_find types=view) the production workflow
+    version behind it, its capabilities, and the datasets and series it reads, each series with its freshness. A
+    workflow counts through its production version, not its drafts."""
+    return await _api("GET", f"{SEM}/sources/{entity_id}")
 
 
 @mcp.tool(annotations=READ)
