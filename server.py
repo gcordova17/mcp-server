@@ -103,7 +103,8 @@ mcp = MCPServer(
     instructions=(
         "TickerNN model pipeline (HMM / MISA -> WMM / QWMM forecasters -> WPPO trading policy) as governed "
         "workflows. Typical loop: list_workflows -> get_version (production is the active version) -> "
-        "fork_draft or configure_<capability> to change a copy -> run_sandbox -> get_execution until COMPLETED "
+        "fork_draft or configure_<capability> to change a copy -> reuse_preview (what the run reuses and what "
+        "trains) -> run_sandbox -> get_execution until COMPLETED "
         "-> compare_execution / get_gates -> request_promotion if the required gates pass. You act as the user "
         "your token names. You cannot approve, promote, reject or roll back: a person does that in Workflow "
         "Studio. Sandbox runs train on the GPU and can take an hour at production settings; one runs at a time. "
@@ -250,12 +251,27 @@ async def fork_draft(workflow_id: str, from_version: int, node_params: Optional[
 
 
 @mcp.tool(annotations=WRITE)
-async def run_sandbox(workflow_id: str, version: int, note: Optional[str] = None) -> dict:
+async def run_sandbox(workflow_id: str, version: int, note: Optional[str] = None,
+                      retrain: Optional[list[str]] = None, retrain_all: bool = False) -> dict:
     """Run a DRAFT (freezing it as SANDBOX) or re-run a SANDBOX version. Every output stays in the run's own
     directory; production is never touched. Trains on the GPU (about an hour at production settings); only
-    one run at a time across all users. Poll get_execution until COMPLETED or FAILED."""
+    one run at a time across all users. Poll get_execution until COMPLETED or FAILED.
+    Every trained node an earlier run trained the same way (settings, data, code) is reused, not retrained
+    (see reuse_preview first); retrain names nodes to train again anyway (and everything trained from them),
+    retrain_all trains everything from scratch."""
     return await _api("POST", f"{WF}/workflows/{workflow_id}/versions/{version}/run",
-                      body={"mode": "SANDBOX", "note": note})
+                      body={"mode": "SANDBOX", "note": note, "retrain": retrain, "retrain_all": retrain_all})
+
+
+@mcp.tool(annotations=READ)
+async def reuse_preview(workflow_id: str, version: int, retrain: Optional[list[str]] = None,
+                        retrain_all: bool = False) -> dict:
+    """What a sandbox run of this version would reuse and what it would train: per trained node, reuse (from
+    which earlier run and version), train (and why: settings changed, code changed, no earlier run, forced), or
+    continue (a node with params.continue: the run it keeps training, or why it can't). With retrain /
+    retrain_all, what forcing those would retrain. The run re-checks the exact inputs when it starts."""
+    return await _api("GET", f"{WF}/workflows/{workflow_id}/versions/{version}/reuse-preview",
+                      params={"retrain": ",".join(retrain or []), "retrain_all": str(bool(retrain_all)).lower()})
 
 
 def _compact_execution(ex: dict) -> dict:
@@ -351,7 +367,7 @@ async def semantic_find(query: str, types: Optional[str] = None, k: int = 8) -> 
     workflows, versions with their last run, serving pointers, gate sets, blueprints and data -- for what a request
     is about. Results are cut to the signed-in user's entitlements. types: comma list of page, view, query, tool,
     section, kind, stage, capability, contract, workflow, version, blueprint, serving, gates, concept, action,
-    dataset, series, pit_rule."""
+    dataset, series, pit_rule, standard (the rules a new capability, stage, route or workflow must follow)."""
     return await _api("GET", f"{SEM}/find", params={"q": query, "types": types, "k": k})
 
 
