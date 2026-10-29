@@ -401,6 +401,16 @@ async def check_action(action: str, params: dict) -> dict:
     return await _api("POST", f"{SEM}/check", body={"action": action, "params": params})
 
 
+@mcp.tool(annotations=READ)
+async def run_query(query: str, params: Optional[dict] = None, body: Optional[dict] = None) -> dict:
+    """Run one query for your user: a read that changes nothing -- a GET route, or a POST that only computes an
+    answer, e.g. production WPPO's decision ("query:POST /api/v1/wppo/decide", body {ticker, position}), the
+    allocator's recommendation, backtest or Monte Carlo, a Risk analysis. query: a query entity id (semantic_find
+    with types="query"); params: path parameters and a GET's ?parameters; body: a POST's JSON body. Anything that
+    isn't a query is refused; your user must be able to open the route's section."""
+    return await _api("POST", f"{SEM}/query", body={"query": query, "params": params or {}, "body": body})
+
+
 @mcp.tool(annotations=WRITE)
 async def act(action: str, params: dict, body: Optional[dict] = None) -> dict:
     """Check an action (as check_action), then call its route as your user. Refused, with the report, when

@@ -61,7 +61,7 @@ claude mcp add --transport http tickernn http://<host>:8000/mcp \
 - **Semantic layer:** `semantic_brief`, `semantic_find`, `semantic_describe`,
   `semantic_impact`, `semantic_freshness`, `plan_workflow` (read-only;
   options: reuse, extend, fork, compose, code; save the one chosen with
-  `create_draft`), `check_action` and `act` (any API write as an action
+  `create_draft`), `run_query` (any query: a GET or a read-only POST such as a WPPO decision, read-only), `check_action` and `act` (any API write as an action
   entity: the gateway, the user's entitlement and the preconditions are
   checked before the route is called), `scaffold_capability` and
   `list_scaffolds` (a new node type as a branch for a person to finish).
