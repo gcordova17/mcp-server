@@ -99,12 +99,13 @@ class AgentTokenVerifier:
 
 mcp = MCPServer(
     name="tickernn-mcp",
-    version="0.3.0",
+    version="0.4.0",
     instructions=(
         "TickerNN model pipeline (HMM / MISA -> WMM / QWMM forecasters -> WPPO trading policy) as governed "
         "workflows. Typical loop: list_workflows -> get_version (production is the active version) -> "
         "fork_draft or configure_<capability> to change a copy -> reuse_preview (the run plan: per trained node, "
-        "reuse / continue / train and why) -> run_sandbox -> get_execution until COMPLETED "
+        "reuse / continue / train and why) -> run_sandbox -> get_execution until COMPLETED (training_health shows "
+        "how each trained node is training) "
         "-> compare_execution / get_gates -> request_promotion if the required gates pass. You act as the user "
         "your token names. You cannot approve, promote, reject or roll back: a person does that in Workflow "
         "Studio. Sandbox runs train on the GPU and can take an hour at production settings; one runs at a time. "
@@ -317,6 +318,21 @@ async def compare_execution(execution_id: str) -> dict:
     """A completed run's WPPO test-window verdict next to the run production serves, with caveats when the
     ticker sets or test windows differ."""
     return await _api("GET", f"{WF}/executions/{execution_id}/compare")
+
+
+@mcp.tool(annotations=READ)
+async def training_health(execution_id: str, node: str, seed: Optional[int] = None, fold: Optional[int] = None) -> dict:
+    """How a trained node of a run trained -- the Studio's Training log, compact: per seed (and cv fold), training
+    health 0-100 with each score and hints (PPO nodes wppo/allocator: KL, clipping, explained variance, exploration,
+    value stability; forecasters wmm/qwmm: learning, generalization, stability, best checkpoint, gradients, weights,
+    regression), the settings, progress, the latest values and each main curve downsampled. Runs from before
+    training logs return what they kept, with a note."""
+    params = {"format": "summary"}
+    if seed is not None:
+        params["seed"] = seed
+    if fold is not None:
+        params["fold"] = fold
+    return await _api("GET", f"{WF}/executions/{execution_id}/nodes/{node}/training-log", params=params)
 
 
 @mcp.tool(annotations=READ)
