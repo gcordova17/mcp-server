@@ -99,12 +99,12 @@ class AgentTokenVerifier:
 
 mcp = MCPServer(
     name="tickernn-mcp",
-    version="0.2.0",
+    version="0.3.0",
     instructions=(
         "TickerNN model pipeline (HMM / MISA -> WMM / QWMM forecasters -> WPPO trading policy) as governed "
         "workflows. Typical loop: list_workflows -> get_version (production is the active version) -> "
-        "fork_draft or configure_<capability> to change a copy -> reuse_preview (what the run reuses and what "
-        "trains) -> run_sandbox -> get_execution until COMPLETED "
+        "fork_draft or configure_<capability> to change a copy -> reuse_preview (the run plan: per trained node, "
+        "reuse / continue / train and why) -> run_sandbox -> get_execution until COMPLETED "
         "-> compare_execution / get_gates -> request_promotion if the required gates pass. You act as the user "
         "your token names. You cannot approve, promote, reject or roll back: a person does that in Workflow "
         "Studio. Sandbox runs train on the GPU and can take an hour at production settings; one runs at a time. "
@@ -235,6 +235,11 @@ async def _fork(workflow_id: str, from_version: int, node_params: Optional[dict]
         nodes[node_id]["params"] = params
     if settings:
         defn["settings"] = {**(defn.get("settings") or {}), **settings}
+    # the retired incremental_from isn't carried into a new draft; the server fills reuse_from (Incremental from
+    # execution) with the source version's run unless settings name another
+    defn["settings"] = {k: v for k, v in (defn.get("settings") or {}).items() if k != "incremental_from"}
+    if "reuse_from" not in (settings or {}):
+        defn["settings"].pop("reuse_from", None)
     return await _api("POST", f"{WF}/workflows/{workflow_id}/versions",
                       body={"definition": defn, "base_version": from_version,
                             "note": note or f"forked from v{from_version} by an agent"})
@@ -245,33 +250,33 @@ async def fork_draft(workflow_id: str, from_version: int, node_params: Optional[
                      settings: Optional[dict] = None, note: Optional[str] = None) -> dict:
     """Copy a version into a new DRAFT with changes. node_params maps node id -> that node's complete new
     params (they replace the old params; omitted keys fall back to the capability's defaults, so start from
-    get_version's params). settings keys (assets, val_rows, test_rows) are merged into the copy's settings.
-    Returns the draft with its validation. To change the graph itself, use create_draft."""
+    get_version's params). settings keys (assets, val_rows, test_rows, reuse_from, data_as_of) are merged into
+    the copy's settings. The draft reuses the trained nodes of from_version's run (reuse_from, "Incremental from
+    execution") unless settings name another execution or "" (train everything). A node's params.training
+    {mode: "scratch"} trains it from scratch; {mode: "continue", start: "best" | "final"} keeps training the
+    base run's model for the node's own timesteps / steps more. Returns the draft with its validation. To change
+    the graph itself, use create_draft."""
     return await _fork(workflow_id, from_version, node_params, settings, note)
 
 
 @mcp.tool(annotations=WRITE)
-async def run_sandbox(workflow_id: str, version: int, note: Optional[str] = None,
-                      retrain: Optional[list[str]] = None, retrain_all: bool = False) -> dict:
+async def run_sandbox(workflow_id: str, version: int, note: Optional[str] = None) -> dict:
     """Run a DRAFT (freezing it as SANDBOX) or re-run a SANDBOX version. Every output stays in the run's own
     directory; production is never touched. Trains on the GPU (about an hour at production settings); only
     one run at a time across all users. Poll get_execution until COMPLETED or FAILED.
-    Every trained node an earlier run trained the same way (settings, data, code) is reused, not retrained
-    (see reuse_preview first); retrain names nodes to train again anyway (and everything trained from them),
-    retrain_all trains everything from scratch."""
+    It does what the version's run plan says (see reuse_preview first); to retrain a node, set its
+    params.training mode in a draft -- there is no per-run retrain option."""
     return await _api("POST", f"{WF}/workflows/{workflow_id}/versions/{version}/run",
-                      body={"mode": "SANDBOX", "note": note, "retrain": retrain, "retrain_all": retrain_all})
+                      body={"mode": "SANDBOX", "note": note})
 
 
 @mcp.tool(annotations=READ)
-async def reuse_preview(workflow_id: str, version: int, retrain: Optional[list[str]] = None,
-                        retrain_all: bool = False) -> dict:
-    """What a sandbox run of this version would reuse and what it would train: per trained node, reuse (from
-    which earlier run and version), train (and why: settings changed, code changed, no earlier run, forced), or
-    continue (a node with params.continue: the run it keeps training, or why it can't). With retrain /
-    retrain_all, what forcing those would retrain. The run re-checks the exact inputs when it starts."""
-    return await _api("GET", f"{WF}/workflows/{workflow_id}/versions/{version}/reuse-preview",
-                      params={"retrain": ",".join(retrain or []), "retrain_all": str(bool(retrain_all)).lower()})
+async def reuse_preview(workflow_id: str, version: int) -> dict:
+    """The version's run plan: its base execution (Incremental from execution) and data moment, and per
+    trained node the next run (reuse / continue / train from scratch), where it reuses from, why it trains
+    (what changed since the base, or its training mode), and notes (code changed since a reused job trained;
+    re-scored on the latest data). errors block the run."""
+    return await _api("GET", f"{WF}/workflows/{workflow_id}/versions/{version}/reuse-preview")
 
 
 def _compact_execution(ex: dict) -> dict:
